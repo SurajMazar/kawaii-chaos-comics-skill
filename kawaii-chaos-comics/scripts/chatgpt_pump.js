@@ -22,7 +22,7 @@
 const W = (ms) => new Promise(r => setTimeout(r, ms));
 window.__addPicker = (kind) => {
   const q = document.createElement('input'); q.type = 'file'; q.multiple = kind === 'refs'; q.id = '__pick_' + kind;
-  q.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999';
+  q.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999'; q.setAttribute('aria-label', kind === 'refs' ? 'PICKREFS' : 'PICKQUEUE');   // findable for file_upload
   q.onchange = async () => {
     if (kind === 'refs') window.__REFS = await Promise.all([...q.files].map(async f => ({name: f.name, type: f.type, buf: await f.arrayBuffer()})));
     else window.__Q = JSON.parse(await q.files[0].text());

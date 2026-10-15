@@ -28,8 +28,8 @@ Why it matters: the account's identity is the hand-drawn doodle feel. A single p
 
 ```
 Draw a fan-art comic strip of [CHARACTER A] and [CHARACTER B] from [SERIES]. Portrait 4:5 (1122x1402). One image only.
-ATTACHED: image 1 = our comic strips (copy this art style EXACTLY); image 2 = the CHARACTER SHEET (copy faces, hair,
-outfits, heights EXACTLY). Ignore the style of any other image in this chat.
+ATTACHED: image 1 = our comic strips — the ONLY style target (copy EXACTLY); image 2 = the CHARACTER SHEET, used for
+DESIGNS ONLY (faces, hair, outfits, heights) — do NOT copy its line weight, colours or rendering. Ignore other images in this chat.
 LAYOUT: follow the attached wireframe exactly — the numbers are the reading order; draw the panel borders and gutters
 like the wireframe (do NOT draw the numbers). Thin cream gutters, dark sketchy borders.
 SUPER-CHIBI IN EVERY PANEL: both characters are tiny super-deformed chibis, about 2 heads tall — giant round heads,
@@ -38,7 +38,8 @@ tiny stubby bodies, little nub hands, simple dot/line/bean-shaped eyes, expressi
 IT MUST NOT LOOK AI-GENERATED — a casual hand-drawn doodle webcomic drawn on an iPad: rough sketchy pencil/marker
 outlines with uneven thickness and small overshoots, flat crayon/marker colours that slightly miss the lines, NO shading
 or one flat shadow, NO lighting effects, NO gradients, NO glossy shine, NO sparkles/bokeh, NO detailed rendering.
-Minimal backgrounds: plain cream/pastel with only a few doodled props, lots of empty space.
+Backgrounds like image 1: warm beige paper tone with faint low-contrast room hints, a few doodled props, lots of empty space
+(not stark white, not detailed). Characters small and mostly full-body with air around them.
 Hand-written lettering that looks like real handwriting, simple hand-drawn balloons with tails at the speaker, small cream
 caption box for the premise. Spell every line EXACTLY as written; nothing else written anywhere.
 Doodle emotion marks: sweat drops, shiver squiggles, blush scribbles, little hearts, "!" marks.

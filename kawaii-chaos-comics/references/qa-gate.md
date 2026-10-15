@@ -5,14 +5,29 @@ already a picture", "how can you take a picture from the back of the camera", "R
 "sometimes Rem is short sometimes tall", "looks AI generated", "Sakuta looks like Subaru"). Look at the image at full
 size (Read the PNG; zoom/crop with PIL for small regions), then answer every question. Any "no" → redraw.
 
-**Redraw policy:** ask ChatGPT to fix the specific failure in the same chat (an edit: "keep everything else the same,
+**Redraw policy:** one targeted edit is fine; if a second round is needed, regenerate fresh with all fixes in the full
+prompt — stacked edits degrade proportions and composition.
+**How:** ask ChatGPT to fix the specific failure in the same chat (an edit: "keep everything else the same,
 fix only …"), or regenerate with a sharper prompt. Max 2 redraws per image; if it still fails, tell the owner exactly
 what is off instead of shipping it. Never send a frame you would reject.
+
+## 0. Side-by-side with the master (do this FIRST)
+Paste the new image next to `style_ref_master.jpg` at the same size. Compare line weight (thin light pencil, not heavy black),
+fills (soft flat crayon, no scratchy hatching), palette (muted), background (warm beige paper tone with faint room hints, not stark white),
+character scale (small full-body chibis with air, not crammed heads). If it would not pass as the same artist, redraw.
+The character sheet carries DESIGNS only — a sheet drawn slightly heavier will drag the strip's style if the prompt says "copy image 2 exactly";
+say "image 2 for designs only, style from image 1" (owner: "the art looks off", 2026-10-15).
 
 ## 1. Style
 - [ ] ~2-head super-chibis, giant round heads, mitten hands, bean/line eyes — like `style_ref_master.jpg`.
 - [ ] Thin sketchy uneven lines, flat muted crayon colours; no gloss, glow, gradients, bokeh, painterly sky.
 - [ ] Mostly plain cream/pastel background, ≤2 simple doodled props. No detailed streets, lamps, crowds, rooms.
+- [ ] COUNT HEADS in every panel: each character has the master's chibi proportions (~2.5 heads, normal
+      chibi body — not stretched, not a squashed stump) and the same size panel to panel. Standing / serving /
+      walking poses get stretched to adult legs (butler Subaru at ~3.5 heads — owner: "subaru?"); say "tiny 2-head chibi,
+      same size as the other panels, very short legs" in those panel prompts.
+- [ ] Compare HEAD SIZES panel to panel: nobody shrinks or grows. Don't seat characters "on the far side" of a table —
+      GPT shrinks them (owner: "why did Rem and Fern become smaller now"); keep everyone at the same distance from the viewer.
 - [ ] Same style as every other frame of the piece (compare side by side on a contact sheet).
 
 ## 2. Not AI-looking
@@ -52,6 +67,8 @@ what is off instead of shipping it. Never send a frame you would reject.
       face needs the camera seen from the side/back with the lens pointing at that person.
 - [ ] Held things are gripped by a hand attached to the right person; cups/cones upright; knives cut where the blade is;
       umbrellas above heads with rain landing on the uncovered side.
+- [ ] Standing characters stand on the FLOOR beside furniture, whole body visible to the shoes — never overlapping or "in"
+      a chair (owner: "why are they standing on the chair").
 - [ ] Clothes/accessories sit correctly (masks over faces, hats on heads, straps over shoulders); gravity works.
 - [ ] Light and time of day agree with the scene and with the sequence order.
 - [ ] Perspective and scale consistent (a distant Ferris wheel is small).

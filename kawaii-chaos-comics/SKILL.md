@@ -28,13 +28,14 @@ present (e.g. claude.ai), use this skill's references and do the steps by hand.
 
 ## The non-negotiables (short version — details in the references)
 
-1. **Locked style:** ~2-head super-chibis, rough sketchy marker lines, flat muted crayon colours, mostly plain cream
-   background with ≤2 simple doodled props, handwritten lettering. Never adult/teen proportions, glossy rendering,
+1. **Locked style:** ~2-head super-chibis, rough sketchy marker lines, flat muted crayon colours, warm beige paper-tone
+   background with faint room hints and ≤2 simple doodled props, small full-body chibis with air around them, handwritten lettering. Never adult/teen proportions, glossy rendering,
    glow, gradients, detailed scenery, crowds or lamps. Attach `style_ref_master.jpg` to every prompt.
 2. **Character sheet first:** every piece starts with a character sheet of exactly its cast *in the outfits that piece
    uses* (front + back, height guide, key props), made in a fresh chat, QA'd, then attached to every frame prompt.
    Text descriptions alone drift (Subaru turned into an older teen, Sakuta looked like Subaru, Shaula was off-model).
-   For side characters build the sheet from official art the owner provides.
+   For side characters build the sheet from official art the owner provides. The sheet carries DESIGNS only; style always
+   comes from `style_ref_master.jpg` (a sheet copied "exactly" dragged one strip's style off).
 3. **Couple rule:** the featured couple is always THE couple; others are cameos, never a love interest.
 4. **Outfit lock:** clothes never change unless the script asks. Rem/Ram: no orange anywhere (orange is only Subaru's
    tracksuit trim). When the owner wants "different clothes", design the new outfit on the character sheet and keep
