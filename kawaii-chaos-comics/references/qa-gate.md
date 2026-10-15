@@ -48,6 +48,8 @@ what is off instead of shipping it. Never send a frame you would reject.
 ## 7. Real-world plausibility — ask "could this physically happen?"
 - [ ] Cameras: the lens faces the subject; a photo never shows the camera taking it (selfie = arm reaching toward the
       viewer, camera out of frame); nobody shoots from the back of a camera; viewfinder side faces the photographer.
+- [ ] Camera orientation: if the LENS is visible, the camera is shooting the viewer — a selfie or a flash in someone's
+      face needs the camera seen from the side/back with the lens pointing at that person.
 - [ ] Held things are gripped by a hand attached to the right person; cups/cones upright; knives cut where the blade is;
       umbrellas above heads with rain landing on the uncovered side.
 - [ ] Clothes/accessories sit correctly (masks over faces, hats on heads, straps over shoulders); gravity works.
