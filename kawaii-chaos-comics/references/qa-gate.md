@@ -42,6 +42,9 @@ say "image 2 for designs only, style from image 1" (owner: "the art looks off", 
       Subaru — ChatGPT bleeds his orange trim onto her).
 - [ ] Rem's visible eye OPEN in most panels (closed `^ ^` max once).
 
+- [ ] Group scenes: each couple sits/stands TOGETHER (double date = G-B-B-G with the boys in the middle when they talk);
+      the same seat order in every panel (owner: "why are boys and girls sitting separately").
+
 ## 4. Anatomy (zoom on hugs, hand-holding, overlaps)
 - [ ] Each character: 2 eyes, 2 arms, 2 legs, mitten hands; no extra/merged/twisted limbs; no warped faces.
 - [ ] Clear whose arm is whose; sleeves belong to the right arm; clothes not fused between characters.
