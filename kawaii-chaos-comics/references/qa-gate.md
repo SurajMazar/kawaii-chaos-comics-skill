@@ -1,20 +1,38 @@
 # Strict QA gate — run on EVERY image before keeping, sending or building with it
 
-> **Read `qa_rules.md` first — the HARD QA GATE overrides anything softer below.** Judge each image ALONE (never pick
-> the "best of two"), write every panel up in `<piece>/qa.md`, unsure = FAIL, and build the reel only after
-> `PASS <sha1 of strip.png>` is written (the repo's build_reel.sh enforces it).
+The owner zooms into everything, and every rule below is a complaint they actually made. QA is **absolute, not
+comparative**: an image passes only if every item passes. Picking "the better of two" is NOT QA — owner:
+"choosing one from another is not a proper qa", after a cluttered "Luck Stat" strip with cakes everywhere and an
+invisible punchline was chosen over a worse sibling and turned into a reel.
 
+## The hard gate (process — mandatory)
+1. Judge each image ALONE. A version that fails any item is rejected even if it is the best of the batch. If all
+   fail: simplify the prompt and regenerate (max 3 fresh attempts, then send the owner the failure list instead).
+2. Crop and look at EVERY panel at full resolution before ticking anything.
+3. Write `<piece>/qa.md`: per panel one sentence "what a stranger sees" (written from the image BEFORE re-reading the
+   script), then items A–J below as PASS/FAIL with reasons.
+4. Unsure = FAIL. Banned words in qa.md: acceptable, minor, borderline, close enough, mostly, fine-ish, "I'll accept".
+5. Only when all pass: append `PASS <sha1 of strip.png>` (music videos: `PASS <sha1> <frame file>` per frame).
+   The repo's `scripts/build_reel.sh` / `build_music_video.sh` refuse to build without it. No reel, no send, no
+   final commit before that line exists. Rejected images go to `raw/rejected/<name>_<failed item>.png`.
 
-The owner zooms into everything. Each item below exists because a shipped image failed it ("3 eyes?", "how is there
-already a picture", "how can you take a picture from the back of the camera", "Rem's eyes always closed",
-"sometimes Rem is short sometimes tall", "looks AI generated", "Sakuta looks like Subaru"). Look at the image at full
-size (Read the PNG; zoom/crop with PIL for small regions), then answer every question. Any "no" → redraw.
+## A–J checklist (every answer must be YES)
+- **A Story reads cold:** each panel's stranger-sentence contains the script beat; the PUNCHLINE ACTION is the
+  biggest, clearest thing in the last panel (shown close). Small/hidden/ambiguous key action → FAIL.
+- **B Minimal props, counted:** only scripted props, each counted exactly. Rows of identical objects (cakes, cups,
+  plates, hearts, lamps) are the #1 AI tell → FAIL.
+- **C Background no busier than the master:** warm beige paper, faint hints only.
+- **D Style = master side by side** (sections 0–1).
+- **E Characters** (sections 1, 3): on-model, ~2.5-head chibis, same head size every panel, heights per sheet, each
+  character exactly once per panel, couples together, seats unchanged.
+- **F Hands & anatomy** (section 4): count fingers on gesture hands (rock = fist, paper = open hand, scissors = two fingers).
+- **G Real world** (section 7). **H Text** (section 8). **I Locks** (section 3). **J Gut check:** would the owner say
+  "looks AI"? → FAIL.
 
-**Redraw policy:** one targeted edit is fine; if a second round is needed, regenerate fresh with all fixes in the full
-prompt — stacked edits degrade proportions and composition.
-**How:** ask ChatGPT to fix the specific failure in the same chat (an edit: "keep everything else the same,
-fix only …"), or regenerate with a sharper prompt. Max 2 redraws per image; if it still fails, tell the owner exactly
-what is off instead of shipping it. Never send a frame you would reject.
+Prompt rules that prevent fails: fewest possible props with exact counts ("ONLY two slices of cake in the whole
+strip"); punchline as a close-up with the key object large and centred; "background as plain as image 1"; no titles.
+
+The detailed checks behind A–J follow.
 
 ## 0. Side-by-side with the master (do this FIRST)
 Paste the new image next to `style_ref_master.jpg` at the same size. Compare line weight (thin light pencil, not heavy black),
