@@ -19,7 +19,8 @@ present (e.g. claude.ai), use this skill's references and do the steps by hand.
 | File | Read it when |
 |---|---|
 | `references/style-and-prompts.md` | writing ANY image prompt — style header, all lock lines, character-sheet prompt, frame prompt templates |
-| `references/qa-gate.md` | checking ANY generated image (always — before keeping, sending or building) |
+| `references/qa_rules.md` | the HARD QA GATE — read before judging ANY image |
+| `references/qa-gate.md` | detailed checklist with the history behind each check |
 | `references/chatgpt-automation.md` | generating images in ChatGPT through Claude in Chrome (queue "pump", downloads, pitfalls) |
 | `references/reels-and-music-videos.md` | building strip reels or music videos, timing to a song, hard cuts vs dissolves |
 | `references/audio-and-copyright.md` | anything with music, lyrics, ElevenLabs songs or voiceovers |
@@ -46,7 +47,10 @@ present (e.g. claude.ai), use this skill's references and do the steps by hand.
 8. **Logic & continuity:** nothing exists before the story creates it; a sequence keeps one place/day/perspective and
    a recurring landmark; objects work like in the real world (a camera never appears in its own photo; you can't
    shoot from the back of a camera; a jack-o'-lantern has 2 eyes, 1 nose, 1 mouth).
-9. **Strict QA gate on every image**, GPT redraws failures (max 2 redraws, then tell the owner what is off).
+9. **HARD QA GATE on every image** (`references/qa_rules.md`): judge each image alone against an absolute checklist —
+   never "pick the better of two"; write `qa.md` per piece (what a stranger sees per panel + PASS/FAIL per check);
+   unsure = FAIL; the punchline action must be the clearest thing in the last panel; no rows of identical props;
+   reel only after `PASS <sha1>`. If every version fails, simplify the prompt and regenerate.
 10. **Copyright:** never reproduce real song lyrics or bake copyrighted songs into a video. Real songs → silent reel;
     the owner adds the song (and Instagram's lyric sticker) in the Instagram app.
 11. **Never post** without the owner explicitly asking. Downloads of the owner's own generated images are fine.

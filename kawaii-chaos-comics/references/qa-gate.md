@@ -1,5 +1,10 @@
 # Strict QA gate — run on EVERY image before keeping, sending or building with it
 
+> **Read `qa_rules.md` first — the HARD QA GATE overrides anything softer below.** Judge each image ALONE (never pick
+> the "best of two"), write every panel up in `<piece>/qa.md`, unsure = FAIL, and build the reel only after
+> `PASS <sha1 of strip.png>` is written (the repo's build_reel.sh enforces it).
+
+
 The owner zooms into everything. Each item below exists because a shipped image failed it ("3 eyes?", "how is there
 already a picture", "how can you take a picture from the back of the camera", "Rem's eyes always closed",
 "sometimes Rem is short sometimes tall", "looks AI generated", "Sakuta looks like Subaru"). Look at the image at full
