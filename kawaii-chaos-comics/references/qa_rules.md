@@ -55,3 +55,6 @@ Owner: "it totally looks AI generated", "why are you making a reel from such a m
 - For every action that changes an object, spell out the resulting state in the following panels.
 - Write the punchline action as a close-up with the key object large and centred.
 - Background as plain as the master in every prompt. No titles. One action per panel. Max 2 balloons.
+- State the fixed LEFT/RIGHT order of every pair in EVERY panel (e.g. "Subaru always on the LEFT of Rem") — GPT swaps partners' sides between panels otherwise.
+- Every cause the punchline depends on must be drawn explicitly (e.g. "her hand touching his hand" before the faint).
+- Heights are MEASURED, never eyeballed: compare figure heights from ink extents (Rem/Subaru ≈ 0.84 is the house standard; other girls vs partners per canon).

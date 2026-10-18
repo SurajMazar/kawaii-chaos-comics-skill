@@ -36,6 +36,9 @@ Check the stills / contact sheet: ChatGPT draws rows at other heights than the w
   ```
   With an owned song (ElevenLabs): `scripts/build_music_video.sh NN_<name>` (reel length = song length; needs
   `audio/song.mp3` + `audio/line_times.json`).
+- **Transitions:** `transition_in` types in render.py: `cut`, `dissolve`, `dip`, `slide`/`push` (`dir`), `drop` (polaroid falls in,
+  tilts and settles), `wipe` (soft edge), `zoom`, `iris`, `pagefold` (page turns on a hinge, `dir` left/right). The owner likes a
+  DIFFERENT natural transition at every change (fade, page fold, slide in, drop…) and ~2.5 s per frame for photo montages.
 - **Dissolves vs hard cuts:** `lyric_reel.py` adds a 0.45 s dissolve (`transition_in`) to every shot after the first.
   The owner wants the chorus to just change frame — delete `transition_in` from the chorus shots in
   `reel/storyboard.json` before `render.py`. Verses/intro keep the soft dissolve.

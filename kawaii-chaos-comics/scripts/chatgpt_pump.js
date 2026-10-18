@@ -20,6 +20,8 @@
 //  - the Chrome tab group can disappear: reopen the chat URL; finished images are still in the library.
 
 const W = (ms) => new Promise(r => setTimeout(r, ms));
+// the visible composer form — after 'New chat' (SPA) ChatGPT keeps hidden old composer forms; always target the visible one
+window.__form = () => { const eds=[...document.querySelectorAll('[contenteditable="true"]')].filter(e=>e.offsetParent); const ed=eds[eds.length-1]; return ed ? ed.closest('form') : null; };
 window.__addPicker = (kind) => {
   const q = document.createElement('input'); q.type = 'file'; q.multiple = kind === 'refs'; q.id = '__pick_' + kind;
   q.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999'; q.setAttribute('aria-label', kind === 'refs' ? 'PICKREFS' : 'PICKQUEUE');   // findable for file_upload
@@ -33,7 +35,7 @@ window.__addPicker = (kind) => {
 async function attach() {
   const refs = window.__REFS || []; if (!refs.length) return 'no refs';
   for (let tryN = 0; tryN < 3; tryN++) {
-    const inp = document.querySelector('#_r_c_') || document.querySelector('input[type=file][accept*=image]');
+    const inp = (window.__form() || document).querySelector('input[type=file][accept*=image]');   // the LIVE composer's input (SPA new chats leave stale forms behind)
     if (!inp) return 'no input';
     const dt = new DataTransfer();
     refs.forEach(r => dt.items.add(new File([r.buf.slice(0)], r.name, {type: r.type || 'image/png'})));
@@ -50,12 +52,12 @@ window.__startPump = (Q = window.__Q) => {
   st.send = async (t) => {
     const s = document.querySelector('button[aria-label="Stop"]'); if (s) { s.click(); await W(2500); }
     const at = await attach();
-    const e = document.querySelector('[contenteditable="true"]'); e.focus();
+    const f = window.__form(); const e = f.querySelector('[contenteditable="true"]'); e.focus();
     document.execCommand('selectAll', false); document.execCommand('delete', false); document.execCommand('insertText', false, t);
     let r = 'timeout';
     for (let k = 0; k < 40; k++) {
       await W(1000);
-      const b = document.querySelector('#composer-submit-button, button[aria-label="Send prompt"], button[aria-label="Send"]');
+      const b = window.__form().querySelector('#composer-submit-button, button[aria-label="Send prompt"], button[aria-label="Send"], button[type="submit"]');
       if (b && !b.disabled) { b.click(); r = 'ok'; break; }
     }
     st.lastSend = Date.now(); await W(3000);
