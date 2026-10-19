@@ -14,6 +14,11 @@ Owner: "it totally looks AI generated", "why are you making a reel from such a m
    `scripts/build_reel.sh` refuses to build a reel without it (and refuses if strip.png changed afterwards).
 5. Only then build the reel / send to the owner.
 
+0. **PROVENANCE FIRST (owner 2026-10-19: "y no reference in the prompt"):** before looking at an image, confirm from ChatGPT's own
+   conversation record that the prompt message carried the reference image(s) (style master + sheet + layout, or the one board).
+   ChatGPT's attachment limit silently drops uploads — a whole batch went out with NO references and every image was off-style.
+   No refs in the record → reject unseen. The pump refuses to send when its attachment chips are missing.
+
 ## Zero-tolerance rules for the reviewer (me)
 - **No comparing.** "B is better than A" is never a reason to keep B. Each image passes or fails on its own merits.
 - **Banned words in qa.md:** "acceptable", "minor", "borderline", "close enough", "mostly", "fine-ish", "ok-ish",
@@ -38,14 +43,30 @@ Owner: "it totally looks AI generated", "why are you making a reel from such a m
 **C. Continuity across panels.** Anything that appears in more than one panel (character, prop, outfit, seat, place,
    lighting) keeps the same size, shape, colour, position and design unless the story changes it. Crop every
    instance and compare them side by side at the same scale — never judge continuity from the whole-strip view.
+   SETTING INVENTORY (owner 2026-10-18: "how did the table so small and also disappeared?"): every stranger-sentence
+   names the place AND its furniture (table, bench, counter, bed…). Then DIFF the sentences panel to panel: if
+   the same people are in the same place, every piece of furniture from the earlier panel must still be there
+   (or visibly cut off by the close-up framing) — anything that vanishes or appears without a cause → FAIL.
+   Furniture is sized for the people using it: everyone "at the table" can reach it — a table only some of them
+   reach → FAIL.
 **D. Cause and effect.** Every change between panels has a visible cause, and every action has its consequence:
    what is split, given, eaten, broken, moved or worn shows the result that action would really produce, and nothing
    appears or disappears without a reason. Ask "what must be true in the next panel because of this one?"
+**D2. Every turn in the story has a visible trigger** (owner 2026-10-18: "how the fear suddenly lead to cuddling?"): read the
+   stranger-sentences in order and, for EVERY change of mood, action or relationship between two panels, point to the panel
+   element (a line, a look, a dropped object) that causes it. A beat that only makes sense if you know the script → FAIL.
+   Run this on the SCRIPT before generating anything: a script that fails it is rewritten first.
 **E. Physically possible.** Bodies, objects and actions behave as in the real world (gravity, reach, who holds what,
    what is visible from where, scale and perspective).
 **F. Characters on-model.** Match the character sheet; same proportions and head size in every panel; heights per
    sheet; each character exactly once per panel; group positions unchanged; anatomy correct (count limbs and fingers).
-**G. Style = master side by side.** Crop a face + body from the image and from style_ref_master.jpg at the same scale and
+   HEAD SIZES MEASURED (owner 2026-10-18: "subaru became big in panel 4"): crop every character's head in every panel
+   and measure head widths; inside one panel the ratio between any two characters must match panel 1 (±10%) — a
+   kneeling/sitting/crying character keeps the same head size as the people standing next to him.
+**G. Style = master side by side.** (The master really is: dark sketchy outlines, SOFT COLOURED-PENCIL GRAIN in the fills,
+   warm softly drawn simple rooms, shiny simple anime eyes, Subaru's SHARP narrow eyes = black vertical pupil WITH a white patch beside it under the lid line (owner 2026-10-19: "fix subaru eye its not white") — owner 2026-10-19: "1st panel subaru eye was
+   issue", "art is wayyy of" on a flat, grain-less strip.) Flat vector-clean fills or Subaru with ^^/dot eyes → FAIL.
+   Crop a face + body from the image and from style_ref_master.jpg at the same scale and
    compare, item by item, as seen in the MASTER (never from notes): line weight/darkness, eye style, head-to-body ratio,
    fill (flat vs textured/gradient), effects (auras, glow), background busyness. Any difference → FAIL. This applies to
    character sheets too — an off-style sheet is never attached to a prompt.
@@ -64,3 +85,5 @@ Owner: "it totally looks AI generated", "why are you making a reel from such a m
 - Crop every recurring character's HEAD in every strip and compare side by side with the master/charsheet — hair silhouette drifts (owner: "Subaru's hair is unusual": a bushy mop instead of short compact spikes). Prompts state each character's hair silhouette explicitly.
 - Style words in prompts come from the locked header in style.md, verbatim — never a paraphrase from memory (a wrong paraphrase,
   "thin light pencil lines", drifted a whole series to an AI look before anyone checked it against the master).
+- Name the setting's furniture once with its size and who uses it, and say it stays in every panel set there
+  ("ONE round table big enough for all four, all four seated AROUND it in every panel set at the table").

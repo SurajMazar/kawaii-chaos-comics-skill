@@ -92,3 +92,7 @@ present (e.g. claude.ai), use this skill's references and do the steps by hand.
 - Send finished files (images/reels) rather than describing them; keep text replies short.
 - Be careful with paid credits (ChatGPT image quota ~40–50 / 5 h, ElevenLabs credits): QA prompts before sending,
   one image per message, Variants=1, don't regenerate things that already pass.
+
+
+## One image per topic (owner, 2026-10-19)
+Prompt ChatGPT for exactly ONE image per strip / frame / sheet. No parallel a/b variants. If it fails QA: one targeted edit, otherwise one fresh regeneration with the prompt fixed. Always confirm the reference image is attached (the attachment limit drops uploads silently).

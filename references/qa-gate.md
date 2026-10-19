@@ -84,6 +84,9 @@ say "image 2 for designs only, style from image 1" (owner: "the art looks off", 
       before it is made).
 - [ ] Montage locations connect: one route on one day (or a clearly shown sequence), same season/weather, time of day
       moving forward, a recurring landmark visible (e.g. the same Ferris wheel in every photo).
+- [ ] SETTING INVENTORY: name the place + furniture in every panel's stranger-sentence and diff them panel to panel — furniture
+      never vanishes or shrinks between panels set in the same place; a table is big enough for everyone sitting at it
+      (owner 2026-10-18: "how did the table so small and also disappeared?").
 - [ ] Same perspective within a sequence: same camera angle/height and framing; props, outfits, accessories and
       background objects identical unless the story changes them. "Things cannot change suddenly."
 - [ ] All frames share the same canvas size and framing (every polaroid fills the frame the same way).

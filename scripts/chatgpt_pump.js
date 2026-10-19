@@ -41,7 +41,11 @@ async function attach() {
     refs.forEach(r => dt.items.add(new File([r.buf.slice(0)], r.name, {type: r.type || 'image/png'})));
     inp.files = dt.files; inp.dispatchEvent(new Event('change', {bubbles: true}));
     await W(6000);
-    if (!/upload failed/i.test(document.body.innerText.slice(-4000))) return 'attached ok';
+    // VERIFY, never assume (2026-10-18: ChatGPT's "limit for file attachments" banner made every upload silently drop and
+    // a whole batch went out WITHOUT the style ref / character sheet). Count the attachment chips the composer shows.
+    if (/limit for file attachments/i.test(document.body.innerText)) return 'attach FAILED: attachment limit';
+    const chips = (window.__form() || document).querySelectorAll('button[aria-label^="Remove"], [data-testid*="attachment"]').length;
+    if (chips >= refs.length && !/upload failed/i.test(document.body.innerText.slice(-4000))) return 'attached ok';
     document.querySelectorAll('button[aria-label^="Remove"]').forEach(b => b.click()); await W(2000);
   }
   return 'attach FAILED';
@@ -52,6 +56,7 @@ window.__startPump = (Q = window.__Q) => {
   st.send = async (t) => {
     const s = document.querySelector('button[aria-label="Stop"]'); if (s) { s.click(); await W(2500); }
     const at = await attach();
+    if (at !== 'attached ok') { st.log.push('NOT SENT ' + (st.queue[st.idx]?.name) + ': ' + at); st.done = true; st.halted = at; return; }   // never send a prompt without its refs
     const f = window.__form(); const e = f.querySelector('[contenteditable="true"]'); e.focus();
     document.execCommand('selectAll', false); document.execCommand('delete', false); document.execCommand('insertText', false, t);
     let r = 'timeout';
