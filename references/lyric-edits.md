@@ -22,3 +22,5 @@ line timings. Song is added in the Instagram app.
 - Fonts live in the repo fonts/ (OFL Google Fonts). Auto shrink-to-fit keeps every row on screen; shared baseline.
 - Times are SONG seconds; every line has start + end. Owner fills in their own lyrics; Claude does not reproduce
   copyrighted lyrics.
+
+**Always (owner 2026-10-23: "generate sample everytime"):** after ANY change to lyric_edit.py, a lyric_edit JSON or its pictures, render `<mv>/lyric_edit_sample.json` and send the mp4 — never report a change without a watchable sample.
