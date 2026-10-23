@@ -1,229 +1,242 @@
 #!/usr/bin/env python3
-"""Lyric-edit video from a JSON file: one full-screen comic picture per line, lyric text hand-lettered INSIDE the picture's
-empty area on a sketchy hand-drawn background (caption box / speech balloon / paper strip), each line with its own animation.
+"""Lyric-edit video (Instagram lyric-edit look) from a JSON file.
+
+One full-screen comic picture per line. The words build up ON the picture (no boxes): verse lines are cute hand-lettering
+that types on, stack lines build word by word with mixed sizes, chorus lines slam in as heavy colour caps with an ink outline,
+*emphasis* words come in big in a marker font. Optional crayon-painted colour stripe behind the text, emoji accents,
+white flash on the beat. Everything "boils" (hand-drawn line jitter a few times a second) so stills feel animated.
+Pictures ghost-crossfade into each other and punch in. Ends on a black signature card.
 
     python3 scripts/lyric_edit.py music_videos/13_rem_lovegrows/lyric_edit.json             # full render
-    python3 scripts/lyric_edit.py music_videos/13_rem_lovegrows/lyric_edit.json --preview   # half size, 15 fps (fast check)
+    python3 scripts/lyric_edit.py music_videos/13_rem_lovegrows/lyric_edit.json --preview   # half size, 15 fps
     python3 scripts/lyric_edit.py music_videos/13_rem_lovegrows/lyric_edit.json --still 3.2 # PNG of video second 3.2
 
-All times are SONG seconds ([mm:ss.xx] in an .lrc file -> mm*60+ss.xx). Video second 0 = song second "start".
-Top level: output, size [w,h], fps, start, end, audio (optional song file, cut from "start"),
-           font, font_index, font_size, ink, highlight, paper, text_y, text_width, picture_zoom
-lines[]:   start, end, text, image, anim, box, y, size, rotate, highlight, word_times
-   anim: pop | drop | slide | wave | type | write | zoom | shake      (default: cycles through them)
-   box:  caption | balloon | strip | none                            (default: cycles caption/balloon/strip)
-   image: picture for this line (omit to keep the previous one); word_times: exact start of every word (song s)
+Times are SONG seconds ([mm:ss.xx] in an .lrc -> mm*60+ss.xx). Video second 0 = song second "start".
+
+TEXT MARKUP in "text":   "/" = new row      *word* = emphasis (big marker word)
+    "Her / clothes / are kinda / *FUNNY*"        "and nobody / *knows* / like me"
+
+Per line:  start, end, text, image, style, anim, stripe, y, align, emoji, flash, word_times
+  style   verse  — cute hand-lettering, types on letter by letter            (default anim: type)
+          stack  — rows alternate left/right, words rise in one by one       (default anim: rise)
+          chorus — HEAVY CAPS cycling yellow/white/red + ink outline, slam    (default anim: slam)
+  anim    type | rise | slam | pop | drop | wave
+  stripe  colour like "#FFD84D" → crayon-painted band wipes in behind the text (null = none)
+  y       0-1 centre of the text block (default 0.2)     align  left | center | right
+  emoji   e.g. "😹😹😹" pops in under the text             flash  true = white flash at the line start
+Top level: output, size, fps, start, end, audio, signature (text on the black end card), signature_seconds,
+           boil (0 = off, default 1.0), fonts {verse, heavy, marker, script, emoji}, palette, accent, ink
 """
 import argparse, json, math, os, random, subprocess, sys
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import numpy as np, cv2
+from PIL import Image, ImageDraw, ImageFont
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FD = os.path.join(ROOT, 'fonts')
 DEF = dict(output='lyric_edit.mp4', size=[1080, 1920], fps=30, start=0.0, end=None, audio=None,
-           font='/System/Library/Fonts/Supplemental/ChalkboardSE.ttc', font_index=2, font_size=92,
-           ink='#3A2A26', highlight='#E8507A', paper='#FFF8EC', text_y=0.2, text_width=0.78, picture_zoom=0.05)
-ANIMS = ['pop', 'drop', 'slide', 'wave', 'type', 'write', 'zoom', 'shake']
-BOXES = ['caption', 'balloon', 'strip']
+           signature='@kawaiichaos.comics', signature_seconds=1.6, boil=1.0,
+           fonts=dict(verse=os.path.join(FD, 'Gaegu-Bold.ttf'), heavy=os.path.join(FD, 'Baloo2.ttf'),
+                      marker=os.path.join(FD, 'PermanentMarker.ttf'), script=os.path.join(FD, 'CaveatBrush.ttf'),
+                      emoji='/System/Library/Fonts/Apple Color Emoji.ttc'),
+           ink='#2E2228', palette=['#FFD84D', '#FFFFFF', '#F0445E'], accent='#F0445E',
+           verse_size=110, heavy_size=124, marker_size=158, y=0.2, margin=0.07)
 
 
-def hexc(s, a=255):
-    s = s.lstrip('#'); return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4)) + (a,)
-
-
+def hexc(s, a=255): s = s.lstrip('#'); return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4)) + (a,)
 def clamp(x): return min(max(x, 0.0), 1.0)
 def ease_out(x): x = clamp(x); return 1 - (1 - x) ** 3
-def ease_back(x, k=2.0): x = clamp(x) - 1; return 1 + (k + 1) * x ** 3 + k * x ** 2
-def bounce(x):
-    x = clamp(x)
-    if x < 1 / 2.75: return 7.5625 * x * x
-    if x < 2 / 2.75: x -= 1.5 / 2.75; return 7.5625 * x * x + .75
-    if x < 2.5 / 2.75: x -= 2.25 / 2.75; return 7.5625 * x * x + .9375
-    x -= 2.625 / 2.75; return 7.5625 * x * x + .984375
+def ease_back(x, k=1.9): x = clamp(x) - 1; return 1 + (k + 1) * x ** 3 + k * x ** 2
 
 
-def cover(path, W, H):
-    """Picture filling the frame without cutting the character: if the picture is wider than the frame (e.g. 2:3 into
-    9:16) it is fitted to the full WIDTH, anchored to the bottom, and the empty paper at its top is extended upward
-    (its own top-row colour + a soft blend), so nothing is cropped; otherwise it is centre-cropped to cover."""
+def fit_picture(path, W, H):
+    """Full width, bottom-anchored; the empty paper at the top is extended upward so nothing is cropped."""
     im = Image.open(path).convert('RGB')
     if im.width / im.height > W / H:
         s = W / im.width; im = im.resize((W, round(im.height * s)), Image.LANCZOS)
         top = im.crop((0, 0, W, max(4, im.height // 40))).resize((1, 1), Image.LANCZOS).getpixel((0, 0))
         out = Image.new('RGB', (W, H), top); out.paste(im, (0, H - im.height))
-        blend = int(120 * W / 1080); y0 = H - im.height
-        grad = Image.linear_gradient('L').resize((W, blend))          # fade the paste edge into the extension
-        out.paste(Image.new('RGB', (W, blend), top), (0, y0), grad.transpose(Image.FLIP_TOP_BOTTOM))
+        b = int(120 * W / 1080)
+        out.paste(Image.new('RGB', (W, b), top), (0, H - im.height), Image.linear_gradient('L').resize((W, b)).transpose(Image.FLIP_TOP_BOTTOM))
         return out
-    s = max(W / im.width, H / im.height)
-    im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
-    x, y = (im.width - W) // 2, (im.height - H) // 2
-    return im.crop((x, y, x + W, y + H))
+    s = max(W / im.width, H / im.height); im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
+    x, y = (im.width - W) // 2, (im.height - H) // 2; return im.crop((x, y, x + W, y + H))
 
 
-def wobble_path(pts, rnd, amp):
-    """Sample a closed polygon densely and jitter it -> hand-drawn, slightly uneven outline."""
-    out = []
-    for i in range(len(pts)):
-        (x0, y0), (x1, y1) = pts[i], pts[(i + 1) % len(pts)]
-        n = max(2, int(math.hypot(x1 - x0, y1 - y0) / 18))
-        for k in range(n):
-            t = k / n; out.append((x0 + (x1 - x0) * t + rnd.uniform(-amp, amp), y0 + (y1 - y0) * t + rnd.uniform(-amp, amp)))
+def boil_variants(img, amp, n=3, seed=0):
+    """n slightly warped copies (smooth random displacement) — cycling them makes lines 'boil' like hand animation."""
+    if amp <= 0: return [img]
+    a = np.asarray(img); h, w = a.shape[:2]; out = []; rnd = np.random.default_rng(seed)
+    gx, gy = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+    for _ in range(n):
+        dx = cv2.resize(rnd.standard_normal((h // 90 + 2, w // 90 + 2)).astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC) * amp
+        dy = cv2.resize(rnd.standard_normal((h // 90 + 2, w // 90 + 2)).astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC) * amp
+        out.append(Image.fromarray(cv2.remap(a, gx + dx, gy + dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)))
     return out
 
 
-def rounded(x0, y0, x1, y1, r, steps=6):
-    pts = []
-    for cx, cy, a0 in ((x1 - r, y0 + r, -90), (x1 - r, y1 - r, 0), (x0 + r, y1 - r, 90), (x0 + r, y0 + r, 180)):
-        for k in range(steps + 1):
-            a = math.radians(a0 + 90 * k / steps); pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
-    return pts
+def crayon_stripe(w, h, color, seed):
+    """Hand-painted crayon band: ragged edges, visible strokes, a little paper showing through."""
+    rnd = random.Random(seed); im = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(im); c = hexc(color)
+    for k in range(int(h / 3)):
+        y = k * 3 + rnd.uniform(-1, 1)
+        d.line([(rnd.uniform(0, 18), y), (w - rnd.uniform(0, 26), y + rnd.uniform(-3, 3))], fill=c[:3] + (int(rnd.uniform(150, 235)),), width=rnd.choice([3, 4, 5]))
+    edge = Image.new('L', (w, h), 0)
+    pts = [(rnd.uniform(0, 14), 0)] + [(w * t / 20 + rnd.uniform(-6, 6), rnd.uniform(0, 10)) for t in range(1, 20)] + \
+          [(w - rnd.uniform(0, 16), 0), (w - rnd.uniform(0, 20), h)] + \
+          [(w * (20 - t) / 20 + rnd.uniform(-6, 6), h - rnd.uniform(0, 12)) for t in range(1, 20)] + [(rnd.uniform(0, 18), h)]
+    ImageDraw.Draw(edge).polygon(pts, fill=255)
+    im.putalpha(Image.composite(im.getchannel('A'), Image.new('L', (w, h), 0), edge)); return im
 
 
-def sketch_box(kind, w, h, sc, seed, paper, ink):
-    """Sketchy background drawn like the comic: cream fill with faint pencil hatching + a doubled wobbly ink outline."""
-    pad = int(60 * sc); W, H = int(w + 2 * pad), int(h + 2 * pad + (70 * sc if kind == 'balloon' else 0))
-    im = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im); rnd = random.Random(seed)
-    x0, y0, x1, y1 = pad, pad, pad + w, pad + h
-    if kind == 'strip':                                   # torn paper strip with two tape pieces
-        pts = [(x0 - 10 * sc, y0 + 6 * sc), (x1 + 8 * sc, y0 - 4 * sc), (x1 + 14 * sc, y1 + 5 * sc), (x0 - 4 * sc, y1 - 3 * sc)]
-        shape = wobble_path(pts, rnd, 3 * sc)
-    elif kind == 'balloon':                               # speech balloon with a tail pointing down
-        cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + 18 * sc, (y1 - y0) / 2 + 22 * sc
-        shape = []
-        for k in range(72):
-            a = 2 * math.pi * k / 72; shape.append((cx + rx * math.cos(a) + rnd.uniform(-2, 2) * sc, cy + ry * math.sin(a) + rnd.uniform(-2, 2) * sc))
-        tip = (cx + rx * 0.35, cy + ry + 60 * sc)
-        i = max(range(len(shape)), key=lambda j: shape[j][1] - abs(shape[j][0] - cx - rx * 0.25) * 0.5)
-        shape = shape[:i - 2] + [tip] + shape[i + 2:]
-    else:                                                 # caption box (slightly tilted rounded rectangle)
-        shape = wobble_path(rounded(x0, y0, x1, y1, 26 * sc), rnd, 2.5 * sc)
-    d.polygon(shape, fill=hexc(paper, 240))
-    hatch = Image.new('RGBA', (W, H), (0, 0, 0, 0)); hd = ImageDraw.Draw(hatch)   # faint pencil grain
-    for k in range(int(W * H / (900 * sc * sc))):
-        x, y = rnd.uniform(0, W), rnd.uniform(0, H); hd.line([(x, y), (x + 9 * sc, y - 4 * sc)], fill=hexc(ink, 14), width=1)
-    mask = Image.new('L', (W, H), 0); ImageDraw.Draw(mask).polygon(shape, fill=255)
-    im.alpha_composite(Image.composite(hatch, Image.new('RGBA', (W, H), (0, 0, 0, 0)), mask))
-    for p in range(2):                                    # sketchy double outline, the second pass slightly off
-        off = [(x + rnd.uniform(-1.6, 1.6) * sc, y + rnd.uniform(-1.6, 1.6) * sc) for x, y in shape]
-        d.line(off + [off[0]], fill=hexc(ink, 235 if p == 0 else 150), width=max(2, int((5 if p == 0 else 3) * sc)), joint='curve')
-    if kind == 'strip':
-        for tx in (x0 + 30 * sc, x1 - 90 * sc):
-            tape = Image.new('RGBA', (int(70 * sc), int(28 * sc)), (236, 222, 190, 190))
-            tape = tape.rotate(rnd.uniform(-14, 14), expand=True, resample=Image.BICUBIC)
-            im.alpha_composite(tape, (int(tx), int(y0 - 20 * sc)))
+def text_sprite(word, font, fill, ink, outline, shadow):
+    """Word drawn on a shared BASELINE (font ascent/descent, not the word's own bbox) so mixed words line up."""
+    asc, desc = font.getmetrics(); d0 = ImageDraw.Draw(Image.new('L', (1, 1)))
+    l, _, r, _ = d0.textbbox((0, 0), word, font=font, stroke_width=outline)
+    pad = outline + shadow + 6; im = Image.new('RGBA', (r - l + 2 * pad, asc + desc + 2 * pad), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    if shadow: d.text((pad - l + shadow, pad + asc + shadow), word, font=font, fill=ink, stroke_width=outline, stroke_fill=ink, anchor='ls')
+    d.text((pad - l, pad + asc), word, font=font, fill=fill, stroke_width=outline, stroke_fill=ink if outline else fill, anchor='ls')
     return im, pad
 
 
-def word_sprite(word, font, fill):
-    d0 = ImageDraw.Draw(Image.new('L', (1, 1))); w = int(d0.textlength(word, font=font)) + 8; h = int(font.size * 1.5)
-    im = Image.new('RGBA', (w + 16, h), (0, 0, 0, 0)); ImageDraw.Draw(im).text((8, int(font.size * 0.12)), word, font=font, fill=fill)
-    return im
+def parse(text):
+    rows = []
+    for grp in text.split('/'):
+        ws = [(w.strip('*'), w.startswith('*') and w.endswith('*') and len(w) > 2) for w in grp.split()]
+        if ws: rows.append(ws)
+    return rows
 
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('json'); ap.add_argument('--preview', action='store_true')
-    ap.add_argument('--still', type=float, default=None)
-    a = ap.parse_args()
-    cfg = {**DEF, **json.load(open(a.json))}; base = os.path.dirname(os.path.abspath(a.json))
+    ap.add_argument('--still', type=float, default=None); a = ap.parse_args()
+    raw = json.load(open(a.json)); cfg = {**DEF, **raw}; cfg['fonts'] = {**DEF['fonts'], **raw.get('fonts', {})}
+    base = os.path.dirname(os.path.abspath(a.json))
     W, H = cfg['size']; fps = cfg['fps']; start = cfg['start']
     if a.preview: W, H, fps = W // 2, H // 2, max(1, fps // 2)
     sc = W / cfg['size'][0]
     lines = sorted(cfg['lines'], key=lambda l: l['start'])
-    end = cfg['end'] or max(l['end'] for l in lines)
+    sig_s = cfg['signature_seconds'] if cfg.get('signature') else 0
+    last = cfg['end'] or max(l['end'] for l in lines); end = last + sig_s
+    STY = {'verse': 'type', 'stack': 'rise', 'chorus': 'slam'}
     pics, cur = {}, None
     for i, l in enumerate(lines):
         if l.get('image'): cur = os.path.join(base, l['image'])
-        l['_img'] = cur; l['_i'] = i
-        l.setdefault('anim', ANIMS[i % len(ANIMS)]); l.setdefault('box', BOXES[i % len(BOXES)])
-        if cur and cur not in pics: pics[cur] = cover(cur, W, H)
-    fonts, sprites, boxes = {}, {}, {}
-    def F(size):
-        if size not in fonts: fonts[size] = ImageFont.truetype(cfg['font'], int(size * sc), index=cfg['font_index'])
-        return fonts[size]
-    tmp = ImageDraw.Draw(Image.new('RGB', (4, 4)))
+        l['_img'] = cur; l['_i'] = i; l.setdefault('style', 'stack'); l.setdefault('anim', STY[l['style']])
+        if cur and cur not in pics: pics[cur] = boil_variants(fit_picture(cur, W, H), 1.6 * sc * cfg['boil'], seed=i)
+    F = {}
+    def font(kind, size):
+        if (kind, size) not in F:
+            f = ImageFont.truetype(cfg['fonts'][kind], int(size * sc))
+            if kind == 'heavy':
+                try: f.set_variation_by_name('ExtraBold')
+                except Exception: pass
+            F[(kind, size)] = f
+        return F[(kind, size)]
+    sprites, stripes, layouts = {}, {}, {}
 
-    def layout(l):
-        font = F(l.get('size', cfg['font_size'])); words = l['text'].split(); sp = tmp.textlength(' ', font=font)
-        rows, cur_r, w = [], [], 0; maxw = cfg['text_width'] * W
-        for k, wd in enumerate(words):
-            ww = tmp.textlength(wd, font=font)
-            if cur_r and w + sp + ww > maxw: rows.append(cur_r); cur_r, w = [], 0
-            cur_r.append((k, wd, ww)); w += (sp if len(cur_r) > 1 else 0) + ww
-        if cur_r: rows.append(cur_r)
-        lh = int(font.size * 1.25); bw = max(sum(x[2] for x in r) + sp * (len(r) - 1) for r in rows); bh = lh * len(rows)
-        pos = []
-        for r_i, r in enumerate(rows):
-            rw = sum(x[2] for x in r) + sp * (len(r) - 1); x = (bw - rw) / 2
-            for k, wd, ww in r: pos.append((k, wd, ww, x, r_i * lh)); x += ww + sp
-        return font, words, pos, bw, bh, lh
+    def layout(l, mul=1.0):
+        if l['_i'] in layouts: return layouts[l['_i']]
+        rows = parse(l['text']); style = l['style']; out = []; k = 0; y = 0; bw = 0
+        if style == 'verse' and len(rows) == 1:
+            words, rows, cr = rows[0], [], []
+            for w in words:
+                if cr and len(' '.join(x[0] for x in cr + [w])) > 15: rows.append(cr); cr = []
+                cr.append(w)
+            if cr: rows.append(cr)
+        for r_i, row in enumerate(rows):
+            items, x, rh, gap = [], 0, 0, 0
+            for w, emph in row:
+                if emph: f = font('marker', int(cfg['marker_size'] * mul)); fill = hexc(cfg['accent']); ol, sh = int(5 * sc), int(7 * sc)
+                elif style == 'chorus': f = font('heavy', int(cfg['heavy_size'] * mul)); fill = hexc(cfg['palette'][k % len(cfg['palette'])]); ol, sh = int(6 * sc), int(8 * sc); w = w.upper()
+                else: f = font('verse', int(cfg['verse_size'] * mul)); fill = hexc(cfg['ink']); ol, sh = 0, 0
+                key = (w, f.size, fill, ol)
+                if key not in sprites: sprites[key] = text_sprite(w, f, fill, hexc(cfg['ink']), ol, sh)
+                sp, pad = sprites[key]; gap = int(f.size * 0.26); gw = sp.width - 2 * pad
+                items.append(dict(w=w, x=x - pad, sprite=sp, pad=pad, k=k, emph=emph, font=f, gh=sp.height - 2 * pad))
+                x += gw + gap; rh = max(rh, sp.height - 2 * pad); k += 1
+            rw = x - gap
+            for it in items: it['y'] = y - it['pad'] + (rh - it['gh']); it['rw'] = rw; it['row'] = r_i     # shared baseline per row
+            out += items; y += int(rh * (0.86 if style == 'chorus' else 0.98)); bw = max(bw, rw)
+        maxw = W * (1 - 2 * cfg['margin'])
+        if bw > maxw and mul > 0.45: return layout(l, mul * maxw / bw * 0.98)        # too wide -> shrink to fit
+        for it in out:
+            al = l.get('align') or ('stack' if style == 'stack' else 'left')
+            if al == 'stack': it['x'] += (bw - it['rw']) / 2 + (-1) ** it['row'] * min(70 * sc, (bw - it['rw']) / 2)   # gentle zig-zag
+            else: it['x'] += 0 if al == 'left' else (bw - it['rw']) if al == 'right' else (bw - it['rw']) / 2
+        layouts[l['_i']] = (out, bw, y); return layouts[l['_i']]
 
-    def picture(l, st):
-        p = pics[l['_img']]; lt = st - l['start']; dur = max(l['end'] - l['start'], 0.1)
-        z = 1 + cfg['picture_zoom'] * clamp(lt / dur)
+    def picture(l, st, f):
+        vs = pics[l['_img']]; p = vs[(f // 4) % len(vs)]                       # boil: swap variant every 4 frames
+        lt = st - l['start']; dur = max(l['end'] - l['start'], 0.1); z = 1 + 0.045 * clamp(lt / dur)
         prev = lines[l['_i'] - 1]['_img'] if l['_i'] > 0 else None
-        if l['_img'] != prev: z *= 1 + 0.06 * (1 - ease_out(lt / 0.35))
+        if l['_img'] != prev: z *= 1 + 0.08 * (1 - ease_out(lt / 0.3))
         w2, h2 = int(W * z), int(H * z); im = p.resize((w2, h2), Image.BILINEAR)
         x, y = (w2 - W) // 2, (h2 - H) // 2; return im.crop((x, y, x + W, y + H)).convert('RGBA')
 
-    def render(st, fidx):
+    def render(st, f):
+        if st >= last:                                                         # black signature end card
+            fr = Image.new('RGBA', (W, H), (12, 10, 14, 255)); p = clamp((st - last) / 0.5)
+            ft = font('script', 120); d0 = ImageDraw.Draw(fr); tw = d0.textlength(cfg['signature'], font=ft)
+            layer = Image.new('RGBA', (W, H), (0, 0, 0, 0)); jit = random.Random(f // 4)
+            ImageDraw.Draw(layer).text(((W - tw) / 2 + jit.uniform(-1.5, 1.5) * sc, H * 0.46 + jit.uniform(-1.5, 1.5) * sc), cfg['signature'], font=ft, fill=(255, 255, 255, int(255 * p)))
+            fr.alpha_composite(layer); return fr
         act = [l for l in lines if l['start'] <= st < l['end']]
         shown = act[0] if act else max([l for l in lines if l['start'] <= st] or [lines[0]], key=lambda l: l['start'])
-        fr = picture(shown, st)
-        if shown['_i'] > 0:                                   # quick crossfade when the picture changes
+        fr = picture(shown, st, f)
+        if shown['_i'] > 0:                                                    # ghost crossfade between pictures
             pl = lines[shown['_i'] - 1]; lt = st - shown['start']
-            if pl['_img'] != shown['_img'] and 0 <= lt < 0.18: fr = Image.blend(picture(pl, pl['end']), fr, ease_out(lt / 0.18))
+            if pl['_img'] != shown['_img'] and 0 <= lt < 0.3: fr = Image.blend(picture(pl, pl['end'], f), fr, ease_out(lt / 0.3))
+        if st > last - 0.4: fr = Image.blend(fr, Image.new('RGBA', (W, H), (12, 10, 14, 255)), ease_out((st - (last - 0.4)) / 0.4))
+        jit = random.Random(f // 4)                                            # text boils with the art
         for l in act:
-            font, words, pos, bw, bh, lh = layout(l); lt = st - l['start']; dur = l['end'] - l['start']; anim = l['anim']
-            n = max(len(words), 1)
-            wt = l.get('word_times') or [l['start'] + k * min(0.22, max(dur - 0.4, 0.2) / n) for k in range(n)]
-            sung = max([k for k, t0 in enumerate(wt) if t0 <= st] or [-1])
-            out_p = ease_out((st - (l['end'] - 0.2)) / 0.2) if st > l['end'] - 0.2 else 0.0
-            key = (l['_i'], l['box'])
-            mx, my = int(44 * sc), int(26 * sc)
-            if key not in boxes: boxes[key] = sketch_box(l['box'], bw + 2 * mx, bh + 2 * my, sc, 1000 + l['_i'], cfg['paper'], cfg['ink']) if l['box'] != 'none' else (None, int(60 * sc))
-            bimg, pad = boxes[key]
-            layer = Image.new('RGBA', (int(bw + 2 * mx + 2 * pad), int(bh + 2 * my + 2 * pad + 80 * sc)), (0, 0, 0, 0))
-            bp = ease_back(lt / 0.25)                         # box pops in first
-            if bimg is not None:
-                bi = bimg.resize((max(1, int(bimg.width * bp)), max(1, int(bimg.height * bp))), Image.BILINEAR) if bp < 0.999 else bimg
-                layer.alpha_composite(bi, (int((layer.width - bi.width) / 2), int((bimg.height - bi.height) / 2)))
-            jit = random.Random(fidx // 3)                    # "boiling" hand-lettering: tiny jitter every 3 frames
-            for k, wd, ww, x, y in pos:
-                t0 = wt[k] + 0.08; p = (st - t0) / 0.3
-                if anim == 'zoom': p = (lt - 0.1) / 0.3
-                if anim == 'type': p = 1.0 if st >= t0 else 0.0
+            lt = st - l['start']; dur = l['end'] - l['start']
+            items, bw, bh = layout(l); n = max(len(items), 1)
+            wt = l.get('word_times') or [l['start'] + i * min(0.3, max(dur * 0.65, 0.3) / n) for i in range(n)]
+            out_p = ease_out((st - (l['end'] - 0.14)) / 0.14) if st > l['end'] - 0.14 else 0.0
+            if l['style'] == 'stack' or l.get('align') == 'center': bx = (W - bw) / 2
+            elif l.get('align') == 'right': bx = W - cfg['margin'] * W - bw
+            else: bx = cfg['margin'] * W
+            by = l.get('y', cfg['y']) * H - bh / 2
+            if l.get('stripe'):
+                key = (l['_i'], int(bh))
+                if key not in stripes: stripes[key] = crayon_stripe(int(W * 1.06), int(bh + 130 * sc), l['stripe'], 77 + l['_i'])
+                s_im = stripes[key]; cw = int(s_im.width * ease_out(lt / 0.28))
+                if cw > 2:
+                    part = s_im.crop((0, 0, cw, s_im.height))
+                    if out_p: part.putalpha(part.getchannel('A').point(lambda v: int(v * (1 - out_p))))
+                    fr.alpha_composite(part, (int(-W * 0.03), int(by - 65 * sc)))
+            for it, t0 in zip(items, wt):
+                p = (st - t0) / 0.22
                 if p <= 0: continue
-                hot = k == sung
-                col = hexc(l.get('highlight', cfg['highlight']) if hot else cfg['ink'])
-                sk = (wd, font.size, col)
-                if sk not in sprites: sprites[sk] = word_sprite(wd, font, col)
-                im = sprites[sk]; dx = dy = 0.0; s = 1.0; alpha = 1.0; rot = 0.0
-                if anim == 'pop': s = ease_back(p)
-                elif anim == 'drop': dy = -110 * sc * (1 - bounce(p)); alpha = clamp(p * 3)
-                elif anim == 'slide': dx = 130 * sc * (1 - ease_out(p)); alpha = clamp(p * 2)
-                elif anim == 'wave': s = ease_back(p); dy = 8 * sc * math.sin(st * 6 + k * 0.9)
-                elif anim == 'zoom': s = 1 + 0.6 * (1 - ease_out(p)); alpha = clamp(p * 2)
-                elif anim == 'shake': s = ease_back(p); rot = 6 * math.sin(st * 30 + k) * (1 - clamp(p))
-                elif anim == 'write':                         # revealed left to right, like being written
-                    cw = int(im.width * clamp(p));
-                    if cw < 2: continue
-                    im = im.crop((0, 0, cw, im.height))
-                if hot: s *= 1.08
-                if s != 1.0 or rot:
-                    im = im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))), Image.BILINEAR)
-                    if rot: im = im.rotate(rot, expand=True, resample=Image.BICUBIC)
-                if alpha < 1 or out_p > 0: im = im.copy(); im.putalpha(im.getchannel('A').point(lambda v: int(v * alpha * (1 - out_p))))
-                full_w = sprites[sk].width; ox = pad + mx + x + dx + (full_w - im.width) / 2 * (0 if anim == 'write' else 1) - 8
-                oy = pad + my + y + dy + (sprites[sk].height - im.height) / 2 - font.size * 0.12
-                layer.alpha_composite(im, (int(ox + jit.uniform(-1, 1) * sc), int(oy + jit.uniform(-1, 1) * sc)))
-                if hot and p > 0.3:                           # hand-drawn underline under the sung word
-                    ud = ImageDraw.Draw(layer); uy = pad + my + y + lh * 0.9
-                    ud.line([(pad + mx + x, uy + jit.uniform(-2, 2)), (pad + mx + x + ww * clamp((p - 0.3) / 0.5), uy + jit.uniform(-2, 2))],
-                            fill=hexc(l.get('highlight', cfg['highlight']), int(220 * (1 - out_p))), width=max(2, int(5 * sc)))
-            if out_p > 0 and bimg is not None:
-                layer.putalpha(layer.getchannel('A').point(lambda v: int(v * (1 - out_p))))
-            rot = l.get('rotate', [-3, 2, -1.5, 3, -2][l['_i'] % 5])
-            if rot: layer = layer.rotate(rot, expand=True, resample=Image.BICUBIC)
-            cy = l.get('y', cfg['text_y']) * H - int(30 * sc * out_p)
-            fr.alpha_composite(layer, (int(W / 2 - layer.width / 2), int(cy - layer.height / 2)))
+                sp = it['sprite']; dy = 0.0; s = 1.0; al = 1.0
+                anim = 'pop' if it['emph'] and l['anim'] in ('type', 'rise') else l['anim']
+                if anim == 'type':
+                    nch = len(it['w']); vis = min(nch, int(nch * clamp((st - t0) / max(0.045 * nch, 0.09))) + 1)
+                    if vis < nch:
+                        pw = int(ImageDraw.Draw(Image.new('L', (1, 1))).textlength(it['w'][:vis], font=it['font']))
+                        sp = sp.crop((0, 0, it['pad'] + pw + 3, sp.height))
+                elif anim == 'rise': dy = 36 * sc * (1 - ease_out(p)); al = clamp(p * 1.6)
+                elif anim == 'slam': s = 1 + 0.75 * (1 - ease_out(p)); al = clamp(p * 2.5)
+                elif anim == 'pop': s = ease_back(p)
+                elif anim == 'drop': dy = -90 * sc * (1 - ease_out(p)); al = clamp(p * 2)
+                elif anim == 'wave': s = ease_back(p); dy = 7 * sc * math.sin(st * 5 + it['k'])
+                if it['emph'] and p > 1: s *= 1 + 0.035 * math.sin(st * 9)            # emphasis word keeps pulsing on the beat
+                if s != 1.0: sp = sp.resize((max(1, int(sp.width * s)), max(1, int(sp.height * s))), Image.BILINEAR)
+                a_ = al * (1 - out_p)
+                if a_ < 1: sp = sp.copy(); sp.putalpha(sp.getchannel('A').point(lambda v: int(v * a_)))
+                ow, oh = it['sprite'].width, it['sprite'].height
+                fr.alpha_composite(sp, (int(bx + it['x'] + (ow - sp.width) / 2 * (anim != 'type') + jit.uniform(-1.2, 1.2) * sc),
+                                        int(by + it['y'] + dy + (oh - sp.height) / 2 + jit.uniform(-1.2, 1.2) * sc)))
+            if l.get('emoji') and lt > min(0.6, dur * 0.4):
+                try:
+                    ef = ImageFont.truetype(cfg['fonts']['emoji'], 96)
+                    ei = Image.new('RGBA', (int(ef.size * 1.3 * len(l['emoji'])), int(ef.size * 1.3)), (0, 0, 0, 0))
+                    ImageDraw.Draw(ei).text((0, 0), l['emoji'], font=ef, embedded_color=True)
+                    s = ease_back((lt - min(0.6, dur * 0.4)) / 0.25) * 0.85 * sc
+                    ei = ei.resize((max(1, int(ei.width * s)), max(1, int(ei.height * s))), Image.BILINEAR)
+                    fr.alpha_composite(ei, (int(bx + bw / 2 - ei.width / 2), int(by + bh + 24 * sc)))
+                except Exception: pass
+            if l.get('flash') and lt < 0.12: fr.alpha_composite(Image.new('RGBA', (W, H), (255, 255, 255, int(255 * (1 - lt / 0.12)))))
         return fr
 
     if a.still is not None:
@@ -231,8 +244,7 @@ def main():
     out = os.path.join(base, cfg['output']); out = out.replace('.mp4', '_preview.mp4') if a.preview else out
     silent = out.replace('.mp4', '_noaudio.mp4') if cfg['audio'] else out
     ff = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(fps), '-i', '-',
-                           '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent],
-                          stdin=subprocess.PIPE)
+                           '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent], stdin=subprocess.PIPE)
     n = int(round((end - start) * fps))
     for f in range(n):
         ff.stdin.write(render(start + f / fps, f).convert('RGB').tobytes())

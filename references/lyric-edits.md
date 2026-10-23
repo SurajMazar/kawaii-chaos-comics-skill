@@ -12,13 +12,13 @@ line timings. Song is added in the Instagram app.
 - Anti-AI wording in every prompt: wobbly imperfect sketch lines, flat colour slightly missing the lines, no glossy hair
   shine, no rim light/airbrush, no detailed scenery, no depth-of-field blur. Compare with an approved MV frame side by side.
 
-## Video — scripts/lyric_edit.py + <mv>/lyric_edit.json
+## Video — scripts/lyric_edit.py + <mv>/lyric_edit.json (v3, 2026-10-23, from the owner's two reference edits)
     $PY scripts/lyric_edit.py music_videos/NN_x/lyric_edit.json [--preview | --still 3.2]
-- Times are SONG seconds (from an .lrc: [mm:ss.xx] -> mm*60+ss.xx); every line has "start" and "end";
-  video second 0 = song second "start". Optional "audio" muxes a song file cut from "start".
-- Per line: text, image, anim (pop | drop | slide | wave | type | write | zoom | shake), box (caption | balloon | strip | none),
-  y (0-1 text position), size, rotate, highlight, word_times (exact start of each word).
-- Look: Chalkboard SE Bold hand-lettering in comic ink, sketchy hand-drawn box with pencil grain + doubled wobbly outline,
-  sung word pink + hand-drawn underline, "boiling" jitter every 3 frames, picture slow push-in + punch-in on change.
-- Lyrics text: Claude does not reproduce copyrighted song lyrics. Ship the JSON with placeholder text; the owner fills in
-  their own lyrics (or uses Instagram's lyrics sticker for licensed songs).
+- NO boxes (owner: boxes looked ugly). Words build ON the picture's empty top area. Styles per line:
+  verse (cute hand-lettering Gaegu, types on), stack (zig-zag rows, words rise), chorus (Baloo 2 ExtraBold caps,
+  yellow/white/red + ink outline, slam). *word* = big Permanent Marker emphasis that pulses; "/" = row break.
+- crayon-painted colour stripe behind text (optional), emoji accents, white flash on chorus hits, picture punch-in,
+  ghost crossfades, "boil" (3 warped variants cycled every 4 frames) on art AND text, black signature end card.
+- Fonts live in the repo fonts/ (OFL Google Fonts). Auto shrink-to-fit keeps every row on screen; shared baseline.
+- Times are SONG seconds; every line has start + end. Owner fills in their own lyrics; Claude does not reproduce
+  copyrighted lyrics.
