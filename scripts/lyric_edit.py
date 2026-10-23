@@ -40,7 +40,19 @@ def bounce(x):
 
 
 def cover(path, W, H):
-    im = Image.open(path).convert('RGB'); s = max(W / im.width, H / im.height)
+    """Picture filling the frame without cutting the character: if the picture is wider than the frame (e.g. 2:3 into
+    9:16) it is fitted to the full WIDTH, anchored to the bottom, and the empty paper at its top is extended upward
+    (its own top-row colour + a soft blend), so nothing is cropped; otherwise it is centre-cropped to cover."""
+    im = Image.open(path).convert('RGB')
+    if im.width / im.height > W / H:
+        s = W / im.width; im = im.resize((W, round(im.height * s)), Image.LANCZOS)
+        top = im.crop((0, 0, W, max(4, im.height // 40))).resize((1, 1), Image.LANCZOS).getpixel((0, 0))
+        out = Image.new('RGB', (W, H), top); out.paste(im, (0, H - im.height))
+        blend = int(120 * W / 1080); y0 = H - im.height
+        grad = Image.linear_gradient('L').resize((W, blend))          # fade the paste edge into the extension
+        out.paste(Image.new('RGB', (W, blend), top), (0, y0), grad.transpose(Image.FLIP_TOP_BOTTOM))
+        return out
+    s = max(W / im.width, H / im.height)
     im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
     x, y = (im.width - W) // 2, (im.height - H) // 2
     return im.crop((x, y, x + W, y + H))
