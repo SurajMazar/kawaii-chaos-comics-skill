@@ -20,7 +20,7 @@ line timings. Song is added in the Instagram app.
 - crayon-painted colour stripe behind text (optional), emoji accents, white flash on chorus hits, picture punch-in,
   ghost crossfades, subtle letter jitter on the TEXT only (owner 2026-10-23: no wobble on the image — boil_image 0), black signature end card.
 - Fonts live in the repo fonts/ (OFL Google Fonts). Auto shrink-to-fit keeps every row on screen; shared baseline.
-- Times are SONG seconds; every line has start + end. Owner fills in their own lyrics; Claude does not reproduce
+- Times are SONG seconds; every line has start + end. Words are spread evenly over the WHOLE line (owner: text must appear along the duration) and the full line holds ~0.25-0.6 s before it leaves; word_times overrides. Owner fills in their own lyrics; Claude does not reproduce
   copyrighted lyrics.
 
 **Always (owner 2026-10-23: "generate sample everytime"):** after ANY change to lyric_edit.py, a lyric_edit JSON or its pictures, render `<mv>/lyric_edit_sample.json` and send the mp4 — never report a change without a watchable sample.

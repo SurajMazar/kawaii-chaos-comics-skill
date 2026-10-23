@@ -193,7 +193,9 @@ def main():
         for l in act:
             lt = st - l['start']; dur = l['end'] - l['start']
             items, bw, bh = layout(l); n = max(len(items), 1)
-            wt = l.get('word_times') or [l['start'] + i * min(0.3, max(dur * 0.65, 0.3) / n) for i in range(n)]
+            # words spread over the WHOLE line (sung-along feel); the full line is complete for the last 'hold' seconds
+            hold = min(0.6, max(0.25, dur * 0.12)); span = max(dur - hold - 0.2, 0.2)
+            wt = l.get('word_times') or [l['start'] + span * i / max(n - 1, 1) for i in range(n)]
             out_p = ease_out((st - (l['end'] - 0.14)) / 0.14) if st > l['end'] - 0.14 else 0.0
             if l['style'] == 'stack' or l.get('align') == 'center': bx = (W - bw) / 2
             elif l.get('align') == 'right': bx = W - cfg['margin'] * W - bw
