@@ -58,20 +58,25 @@ Owner: "it totally looks AI generated", "why are you making a reel from such a m
    Run this on the SCRIPT before generating anything: a script that fails it is rewritten first.
 **E. Physically possible.** Bodies, objects and actions behave as in the real world (gravity, reach, who holds what,
    what is visible from where, scale and perspective).
+   FACING CHECK (owner 2026-10-22: "it's facing opposite direction"): anything someone writes on, reads, looks at or
+   photographs (board, card, phone, book, screen, camera) faces THAT person; the viewer only sees its face from the side.
 **F. Characters on-model.** Match the character sheet; same proportions and head size in every panel; heights per
    sheet; each character exactly once per panel; group positions unchanged; anatomy correct (count limbs and fingers).
    HEAD SIZES MEASURED (owner 2026-10-18: "subaru became big in panel 4"): crop every character's head in every panel
    and measure head widths; inside one panel the ratio between any two characters must match panel 1 (±10%) — a
    kneeling/sitting/crying character keeps the same head size as the people standing next to him.
 **G. Style = master side by side.** (The master really is: dark sketchy outlines, SOFT COLOURED-PENCIL GRAIN in the fills,
-   warm softly drawn simple rooms, shiny simple anime eyes, Subaru's SHARP narrow eyes = black vertical pupil WITH a white patch beside it under the lid line (owner 2026-10-19: "fix subaru eye its not white") — owner 2026-10-19: "1st panel subaru eye was
+   warm softly drawn simple rooms, shiny simple anime eyes, Subaru's SHARP narrow eyes = black vertical pupil WITH a white area beside it under the lid line, BOTH EYES SYMMETRIC (same lid, white and pupil, mirrored) (owner 2026-10-19: "fix subaru eye its not white") — owner 2026-10-19: "1st panel subaru eye was
    issue", "art is wayyy of" on a flat, grain-less strip.) Flat vector-clean fills or Subaru with ^^/dot eyes → FAIL.
+   RUN `scripts/style_check.py <image>` and LOOK at the sheet AND its _orange.jpg (magenta boxes = orange near Rem) before any other check (owner 2026-10-22 "art is different here": a
+   watercolour/smudgy redraw passed because I only checked story details).
    Crop a face + body from the image and from style_ref_master.jpg at the same scale and
    compare, item by item, as seen in the MASTER (never from notes): line weight/darkness, eye style, head-to-body ratio,
    fill (flat vs textured/gradient), effects (auras, glow), background busyness. Any difference → FAIL. This applies to
    character sheets too — an off-style sheet is never attached to a prompt.
 **H. Text exact.** Only the script's lines, correctly spelled, tails at speakers, reading order right.
-**I. Locks.** Every standing rule in style.md (outfits, colours, eyes, etc.).
+**I. Locks.** EYES BY SCENE (owner 2026-10-22): Rem's eye open or closed is chosen by the moment, not forced open — closed ^^ during a blissful hug/laugh is correct; FAIL only when the eye state contradicts the beat or ^^ repeats in nearly every panel.
+   Every standing rule in style.md (outfits, colours, eyes, etc.).
 **J. Gut check.** Would the owner say "looks AI" or "doesn't make sense"? → FAIL.
 
 ## Prompt rules that prevent fails

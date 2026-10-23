@@ -96,3 +96,6 @@ present (e.g. claude.ai), use this skill's references and do the steps by hand.
 
 ## One image per topic (owner, 2026-10-19)
 Prompt ChatGPT for exactly ONE image per strip / frame / sheet. No parallel a/b variants. If it fails QA: one targeted edit, otherwise one fresh regeneration with the prompt fixed. Always confirm the reference image is attached (the attachment limit drops uploads silently).
+
+## Lyric edits (2026-10-23)
+Full-screen comic picture per song line + hand-lettered animated text inside the art: see references/lyric-edits.md and scripts/lyric_edit.py (JSON with start/end per line, per-line animation + sketchy box).

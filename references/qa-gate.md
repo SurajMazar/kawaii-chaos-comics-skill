@@ -65,7 +65,7 @@ say "image 2 for designs only, style from image 1" (owner: "the art looks off", 
 - [ ] Heights consistent (Rem's head top = Subaru's eye level) across all panels/frames.
 - [ ] Outfit lock: nobody's clothes changed unless the script says so. **Rem/Ram: zero orange** (check sleeves near
       Subaru — ChatGPT bleeds his orange trim onto her).
-- [ ] Rem's visible eye OPEN in most panels (closed `^ ^` max once).
+- [ ] Rem's eye state fits each panel's moment (open when talking/looking/reacting; a closed ^^ smile is fine for a blissful hug or laugh) — owner 2026-10-22: "not always necessary to make rem's eye open". Reject only ^^ in nearly every panel.
 
 - [ ] Group scenes: each couple sits/stands TOGETHER (double date = G-B-B-G with the boys in the middle when they talk);
       the same seat order in every panel (owner: "why are boys and girls sitting separately").
