@@ -137,10 +137,11 @@ def main():
     def layout(l, mul=1.0):
         if l['_i'] in layouts: return layouts[l['_i']]
         rows = parse(l['text']); style = l['style']; out = []; k = 0; y = 0; bw = 0
-        if style == 'verse' and len(rows) == 1:
+        if len(rows) == 1:                                   # no "/" given -> auto-split into rows that fit the style
+            lim = {'verse': 15, 'stack': 12, 'chorus': 12}[style]
             words, rows, cr = rows[0], [], []
             for w in words:
-                if cr and len(' '.join(x[0] for x in cr + [w])) > 15: rows.append(cr); cr = []
+                if cr and len(' '.join(x[0] for x in cr + [w])) > lim: rows.append(cr); cr = []
                 cr.append(w)
             if cr: rows.append(cr)
         for r_i, row in enumerate(rows):
@@ -159,6 +160,7 @@ def main():
             out += items; y += int(rh * (0.86 if style == 'chorus' else 0.98)); bw = max(bw, rw)
         maxw = W * (1 - 2 * cfg['margin'])
         if bw > maxw and mul > 0.45: return layout(l, mul * maxw / bw * 0.98)        # too wide -> shrink to fit
+        if y > 0.4 * H and mul > 0.45: return layout(l, mul * 0.4 * H / y * 0.98)  # too tall -> shrink (keeps clear of the art)
         for it in out:
             al = l.get('align') or ('stack' if style == 'stack' else 'left')
             if al == 'stack': it['x'] += (bw - it['rw']) / 2 + (-1) ** it['row'] * min(70 * sc, (bw - it['rw']) / 2)   # gentle zig-zag
@@ -196,7 +198,7 @@ def main():
             if l['style'] == 'stack' or l.get('align') == 'center': bx = (W - bw) / 2
             elif l.get('align') == 'right': bx = W - cfg['margin'] * W - bw
             else: bx = cfg['margin'] * W
-            by = l.get('y', cfg['y']) * H - bh / 2
+            by = min(max(l.get('y', cfg['y']) * H - bh / 2, 0.04 * H), 0.96 * H - bh)   # never off the top/bottom
             if l.get('stripe'):
                 key = (l['_i'], int(bh))
                 if key not in stripes: stripes[key] = crayon_stripe(int(W * 1.06), int(bh + 130 * sc), l['stripe'], 77 + l['_i'])
@@ -242,6 +244,7 @@ def main():
     if a.still is not None:
         p = os.path.join(base, f'still_{a.still:.2f}.png'); render(start + a.still, int(a.still * fps)).convert('RGB').save(p); print('->', p); return
     out = os.path.join(base, cfg['output']); out = out.replace('.mp4', '_preview.mp4') if a.preview else out
+    final = out; out = out.replace('.mp4', '.rendering.mp4')                    # write to a temp file, swap in when done
     silent = out.replace('.mp4', '_noaudio.mp4') if cfg['audio'] else out
     ff = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(fps), '-i', '-',
                            '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent], stdin=subprocess.PIPE)
@@ -254,7 +257,7 @@ def main():
         aud = cfg['audio'] if os.path.isabs(cfg['audio']) else os.path.join(base, cfg['audio'])
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', silent, '-ss', str(start), '-i', aud, '-map', '0:v', '-map', '1:a',
                         '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', out], check=True); os.remove(silent)
-    print('->', out)
+    os.replace(out, final); print('->', final)
 
 
 if __name__ == '__main__':
