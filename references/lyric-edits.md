@@ -18,7 +18,7 @@ line timings. Song is added in the Instagram app.
   verse (cute hand-lettering Gaegu, types on), stack (zig-zag rows, words rise), chorus (Baloo 2 ExtraBold caps,
   yellow/white/red + ink outline, slam). *word* = big Permanent Marker emphasis that pulses; "/" = row break.
 - crayon-painted colour stripe behind text (optional), emoji accents, white flash on chorus hits, picture punch-in,
-  ghost crossfades, "boil" (3 warped variants cycled every 4 frames) on art AND text, black signature end card.
+  ghost crossfades, subtle letter jitter on the TEXT only (owner 2026-10-23: no wobble on the image — boil_image 0), black signature end card.
 - Fonts live in the repo fonts/ (OFL Google Fonts). Auto shrink-to-fit keeps every row on screen; shared baseline.
 - Times are SONG seconds; every line has start + end. Owner fills in their own lyrics; Claude does not reproduce
   copyrighted lyrics.

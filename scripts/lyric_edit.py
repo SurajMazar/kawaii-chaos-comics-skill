@@ -4,7 +4,7 @@
 One full-screen comic picture per line. The words build up ON the picture (no boxes): verse lines are cute hand-lettering
 that types on, stack lines build word by word with mixed sizes, chorus lines slam in as heavy colour caps with an ink outline,
 *emphasis* words come in big in a marker font. Optional crayon-painted colour stripe behind the text, emoji accents,
-white flash on the beat. Everything "boils" (hand-drawn line jitter a few times a second) so stills feel animated.
+white flash on the beat. The lettering has a subtle hand-drawn jitter; pictures stay still (owner: no wobble on the image).
 Pictures ghost-crossfade into each other and punch in. Ends on a black signature card.
 
     python3 scripts/lyric_edit.py music_videos/13_rem_lovegrows/lyric_edit.json             # full render
@@ -25,7 +25,7 @@ Per line:  start, end, text, image, style, anim, stripe, y, align, emoji, flash,
   y       0-1 centre of the text block (default 0.2)     align  left | center | right
   emoji   e.g. "😹😹😹" pops in under the text             flash  true = white flash at the line start
 Top level: output, size, fps, start, end, audio, signature (text on the black end card), signature_seconds,
-           boil (0 = off, default 1.0), fonts {verse, heavy, marker, script, emoji}, palette, accent, ink
+           boil_image (picture wobble, default 0 = off — owner), boil_text (letter jitter, default 1, 0 = off), fonts {verse, heavy, marker, script, emoji}, palette, accent, ink
 """
 import argparse, json, math, os, random, subprocess, sys
 import numpy as np, cv2
@@ -34,7 +34,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FD = os.path.join(ROOT, 'fonts')
 DEF = dict(output='lyric_edit.mp4', size=[1080, 1920], fps=30, start=0.0, end=None, audio=None,
-           signature='@kawaiichaos.comics', signature_seconds=1.6, boil=1.0,
+           signature='@kawaiichaos.comics', signature_seconds=1.6, boil_image=0.0, boil_text=1.0,
            fonts=dict(verse=os.path.join(FD, 'Gaegu-Bold.ttf'), heavy=os.path.join(FD, 'Baloo2.ttf'),
                       marker=os.path.join(FD, 'PermanentMarker.ttf'), script=os.path.join(FD, 'CaveatBrush.ttf'),
                       emoji='/System/Library/Fonts/Apple Color Emoji.ttc'),
@@ -122,7 +122,7 @@ def main():
     for i, l in enumerate(lines):
         if l.get('image'): cur = os.path.join(base, l['image'])
         l['_img'] = cur; l['_i'] = i; l.setdefault('style', 'stack'); l.setdefault('anim', STY[l['style']])
-        if cur and cur not in pics: pics[cur] = boil_variants(fit_picture(cur, W, H), 1.6 * sc * cfg['boil'], seed=i)
+        if cur and cur not in pics: pics[cur] = boil_variants(fit_picture(cur, W, H), 1.6 * sc * cfg['boil_image'], seed=i)
     F = {}
     def font(kind, size):
         if (kind, size) not in F:
@@ -187,7 +187,7 @@ def main():
             pl = lines[shown['_i'] - 1]; lt = st - shown['start']
             if pl['_img'] != shown['_img'] and 0 <= lt < 0.3: fr = Image.blend(picture(pl, pl['end'], f), fr, ease_out(lt / 0.3))
         if st > last - 0.4: fr = Image.blend(fr, Image.new('RGBA', (W, H), (12, 10, 14, 255)), ease_out((st - (last - 0.4)) / 0.4))
-        jit = random.Random(f // 4)                                            # text boils with the art
+        jit = random.Random(f // 4); jt = 1.2 * cfg['boil_text']                # subtle hand-lettering jitter (pictures stay still)
         for l in act:
             lt = st - l['start']; dur = l['end'] - l['start']
             items, bw, bh = layout(l); n = max(len(items), 1)
@@ -225,8 +225,8 @@ def main():
                 a_ = al * (1 - out_p)
                 if a_ < 1: sp = sp.copy(); sp.putalpha(sp.getchannel('A').point(lambda v: int(v * a_)))
                 ow, oh = it['sprite'].width, it['sprite'].height
-                fr.alpha_composite(sp, (int(bx + it['x'] + (ow - sp.width) / 2 * (anim != 'type') + jit.uniform(-1.2, 1.2) * sc),
-                                        int(by + it['y'] + dy + (oh - sp.height) / 2 + jit.uniform(-1.2, 1.2) * sc)))
+                fr.alpha_composite(sp, (int(bx + it['x'] + (ow - sp.width) / 2 * (anim != 'type') + jit.uniform(-jt, jt) * sc),
+                                        int(by + it['y'] + dy + (oh - sp.height) / 2 + jit.uniform(-jt, jt) * sc)))
             if l.get('emoji') and lt > min(0.6, dur * 0.4):
                 try:
                     ef = ImageFont.truetype(cfg['fonts']['emoji'], 96)
