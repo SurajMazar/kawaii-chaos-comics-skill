@@ -33,7 +33,7 @@ Per line:  start, end, text, image | shots, style, anim, stripe, y, align, emoji
 Top level: output, size, fps, start, end, audio, fit (extend = full width + paper on top | cover = fill the screen), signature (text on the black end card), signature_seconds,
            boil_image (picture wobble, default 0 = off — owner), boil_text (letter jitter, default 1, 0 = off), fonts {verse, heavy, marker, script, emoji}, palette, accent, ink
 """
-import argparse, json, math, os, random, subprocess, sys
+import argparse, copy, json, math, os, random, subprocess, sys, types
 import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
@@ -122,13 +122,12 @@ def parse(text):
     return rows
 
 
-def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('json'); ap.add_argument('--preview', action='store_true')
-    ap.add_argument('--still', type=float, default=None); a = ap.parse_args()
-    raw = json.load(open(a.json)); cfg = {**DEF, **raw}; cfg['fonts'] = {**DEF['fonts'], **raw.get('fonts', {})}
-    base = os.path.dirname(os.path.abspath(a.json))
-    W, H = cfg['size']; fps = cfg['fps']; start = cfg['start']
-    if a.preview: W, H, fps = W // 2, H // 2, max(1, fps // 2)
+def load(raw, base, scale=1.0, fps=None):
+    """Build a renderer from a lyric-edit dict. base = folder the image paths are relative to.
+    scale < 1 renders smaller (previews); fps overrides the JSON fps. Returns a namespace with
+    render(song_s, frame_no) -> RGBA Image, plus W, H, fps, start, end (song s, incl. end card), last (song s of last line end)."""
+    raw = copy.deepcopy(raw); cfg = {**DEF, **raw}; cfg['fonts'] = {**DEF['fonts'], **raw.get('fonts', {})}
+    W, H = (int(round(v * scale / 2)) * 2 for v in cfg['size']); fps = fps or cfg['fps']; start = cfg['start']
     sc = W / cfg['size'][0]
     lines = sorted(cfg['lines'], key=lambda l: l['start'])
     sig_s = cfg['signature_seconds'] if cfg.get('signature') else 0
@@ -285,23 +284,49 @@ def main():
             if l.get('flash') and lt < 0.12: fr.alpha_composite(Image.new('RGBA', (W, H), (255, 255, 255, int(255 * (1 - lt / 0.12)))))
         return fr
 
-    if a.still is not None:
-        p = os.path.join(base, f'still_{a.still:.2f}.png'); render(start + a.still, int(a.still * fps)).convert('RGB').save(p); print('->', p); return
-    out = os.path.join(base, cfg['output']); out = out.replace('.mp4', '_preview.mp4') if a.preview else out
-    final = out; out = out.replace('.mp4', '.rendering.mp4')                    # write to a temp file, swap in when done
-    silent = out.replace('.mp4', '_noaudio.mp4') if cfg['audio'] else out
-    ff = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(fps), '-i', '-',
+    return types.SimpleNamespace(render=render, W=W, H=H, fps=fps, start=start, end=end, last=last, cfg=cfg, base=base)
+
+
+def write_video(ed, out, progress=None, audio=None, cancel=None):
+    """Encode the whole edit to out (atomic: temp file, swapped in at the end). progress(done_frames, total_frames);
+    cancel() -> True aborts. audio = song file baked in from song second `start` (None = silent; IG adds the song)."""
+    final = out; out = out[:-4] + '.rendering.mp4'
+    silent = out[:-4] + '_noaudio.mp4' if audio else out
+    ff = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{ed.W}x{ed.H}', '-r', str(ed.fps), '-i', '-',
                            '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent], stdin=subprocess.PIPE)
-    n = int(round((end - start) * fps))
-    for f in range(n):
-        ff.stdin.write(render(start + f / fps, f).convert('RGB').tobytes())
-        if f % (fps * 5) == 0: print(f'{f / fps:5.1f}s / {n / fps:.1f}s', file=sys.stderr)
+    n = int(round((ed.end - ed.start) * ed.fps))
+    try:
+        for f in range(n):
+            if cancel and cancel(): raise KeyboardInterrupt('cancelled')
+            ff.stdin.write(ed.render(ed.start + f / ed.fps, f).convert('RGB').tobytes())
+            if progress: progress(f + 1, n)
+    except BaseException:
+        ff.stdin.close(); ff.wait()
+        for x in {out, silent}:
+            if os.path.exists(x): os.remove(x)
+        raise
     ff.stdin.close(); ff.wait()
-    if cfg['audio']:
-        aud = cfg['audio'] if os.path.isabs(cfg['audio']) else os.path.join(base, cfg['audio'])
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', silent, '-ss', str(start), '-i', aud, '-map', '0:v', '-map', '1:a',
+    if audio:
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', silent, '-ss', str(ed.start), '-i', audio, '-map', '0:v', '-map', '1:a',
                         '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', out], check=True); os.remove(silent)
-    os.replace(out, final); print('->', final)
+    os.replace(out, final); return final
+
+
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument('json'); ap.add_argument('--preview', action='store_true')
+    ap.add_argument('--still', type=float, default=None); a = ap.parse_args()
+    raw = json.load(open(a.json)); base = os.path.dirname(os.path.abspath(a.json))
+    ed = load(raw, base, 0.5 if a.preview else 1.0, max(1, raw.get('fps', 30) // 2) if a.preview else None)
+    if a.still is not None:
+        p = os.path.join(base, f'still_{a.still:.2f}.png'); ed.render(ed.start + a.still, int(a.still * ed.fps)).convert('RGB').save(p); print('->', p); return
+    out = os.path.join(base, ed.cfg['output']); out = out.replace('.mp4', '_preview.mp4') if a.preview else out
+    aud = ed.cfg['audio'] and (ed.cfg['audio'] if os.path.isabs(ed.cfg['audio']) else os.path.join(base, ed.cfg['audio']))
+    last_pct = [-1]
+    def prog(d, n):
+        pct = d * 100 // n
+        if pct // 10 != last_pct[0] // 10: print(f'{d / ed.fps:5.1f}s / {n / ed.fps:.1f}s', file=sys.stderr)
+        last_pct[0] = pct
+    print('->', write_video(ed, out, prog, aud))
 
 
 if __name__ == '__main__':

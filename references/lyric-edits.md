@@ -41,3 +41,9 @@ line timings. Song is added in the Instagram app.
   enough to read (stink lines); Rem/Subaru height on every two-shot.
 - Parallel: one ChatGPT tab per character; `__newchat()` (SPA new chat keeps the sender), PICKA input forwards the board
   into the composer's file input; `__dl(name)` re-downloads the latest image if `__send1`'s auto-download stalls.
+
+## Lyric Studio web app (2026-10-24) — `studio/run.sh` → http://localhost:8770
+FastAPI (`studio/server.py`, imports lyric_edit.load/write_video → previews are pixel-identical, stills ~20 ms cached)
++ React/TS/Vite/Tailwind/zustand (`studio/web`). Edit lines/timings/text/looks/cuts/close-ups, live play synced to the
+song, timeline drag + tap-to-time (T), LRC import, quick/final render with progress, save history in `.studio_history/`.
+Point the owner here for editing instead of hand-editing JSON. Port 8770 (8765 is the MediBang site).
