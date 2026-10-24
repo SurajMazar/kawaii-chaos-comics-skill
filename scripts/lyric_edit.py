@@ -49,6 +49,12 @@ DEF = dict(output='lyric_edit.mp4', size=[1080, 1920], fps=30, start=0.0, end=No
            block_big=165, block_small=82, block_fill='#FFFFFF')
 
 
+def font_path(p):
+    """Font paths may be absolute or relative to the repo (e.g. "fonts/MyFont.ttf" uploaded in the Studio)."""
+    if p and not os.path.isabs(p) and not os.path.exists(p) and os.path.exists(os.path.join(ROOT, p)): return os.path.join(ROOT, p)
+    return p
+
+
 def hexc(s, a=255): s = s.lstrip('#'); return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4)) + (a,)
 def clamp(x): return min(max(x, 0.0), 1.0)
 def ease_out(x): x = clamp(x); return 1 - (1 - x) ** 3
@@ -151,7 +157,7 @@ def load(raw, base, scale=1.0, fps=None):
     F = {}
     def font(kind, size):
         if (kind, size) not in F:
-            f = ImageFont.truetype(cfg['fonts'][kind], int(size * sc))
+            f = ImageFont.truetype(font_path(cfg['fonts'][kind]), int(size * sc))
             if kind == 'heavy':
                 try: f.set_variation_by_name('ExtraBold')
                 except Exception: pass
@@ -274,7 +280,7 @@ def load(raw, base, scale=1.0, fps=None):
                                         int(by + it['y'] + dy + (oh - sp.height) / 2 + jit.uniform(-jt, jt) * sc)))
             if l.get('emoji') and lt > min(0.6, dur * 0.4):
                 try:
-                    ef = ImageFont.truetype(cfg['fonts']['emoji'], 96)
+                    ef = ImageFont.truetype(font_path(cfg['fonts']['emoji']), 96)
                     ei = Image.new('RGBA', (int(ef.size * 1.3 * len(l['emoji'])), int(ef.size * 1.3)), (0, 0, 0, 0))
                     ImageDraw.Draw(ei).text((0, 0), l['emoji'], font=ef, embedded_color=True)
                     s = ease_back((lt - min(0.6, dur * 0.4)) / 0.25) * 0.85 * sc
